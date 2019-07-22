@@ -6,18 +6,21 @@ create_exa_config() {
 	local _file="exa-$_localip.conf"
 
 	cat > $_file <<EOF
+process injector {
+	run /usr/local/bin/mrt4exabgp -n "$_localip" "$_mrtfile";
+	encoder text;
+}
+
 neighbor $_peerip {
 	router-id $_localid;
 	peer-as $_peeras;
 	local-address $_localip;
 	local-as $_localas;
 	group-updates;
+	adj-rib-in false;
 
-	process inject {
-		receive {
-			neighbor-changes;
-		}
-		run /usr/local/bin/mrt4exabgp -n "$_localip" "$_mrtfile";
+	api {
+		processes [ injector ];
 	}
 }
 EOF

@@ -67,7 +67,6 @@ show_large_community(u_char *data, size_t len)
 	size_t i;
 	u_int32_t a, v1, v2;
 
-#if 0
 	printf(" large-community [ ");
 	for (i = 0; i < len; i += 12) {
 		memcpy(&a, data + i, sizeof(a));
@@ -76,19 +75,6 @@ show_large_community(u_char *data, size_t len)
 		printf("%u:%u:%u ", ntohl(a), ntohl(v1), ntohl(v2));
 	}
 	printf("]");
-#else
-	/* exabgp in ports does not support large-community */
-
-	printf(" attribute [ 0x%02x 0x%02x 0x", ATTR_LARGE_COMMUNITIES,
-	     ATTR_OPTIONAL | ATTR_TRANSITIVE);
-	for (i = 0; i < len; i += 12) {
-		memcpy(&a, data + i, sizeof(a));
-		memcpy(&v1, data + i + 4, sizeof(v1));
-		memcpy(&v2, data + i + 8, sizeof(v2));
-		printf("%08x%08x%08x", ntohl(a), ntohl(v1), ntohl(v2));
-	}
-	printf(" ]");
-#endif
 }
 
 static void
@@ -159,6 +145,8 @@ mrt_exa_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		    sizeof(neighbor)) != 0)
 			continue;
 
+		/* printf("neighbor %s local-as %d ", "XXX",
+		    &mp->peers[mre->peer_idx].asnum); */
 		printf("announce route %s/%d", log_addr(&mr->prefix),
 		    mr->prefixlen);
 		printf(" next-hop %s", log_addr(&mre->nexthop));
@@ -228,6 +216,8 @@ reader(void *arg)
 
 	while ((n = getline(&line, &len, stdin)) != -1) {
 		if (n <= 1)
+			continue;
+		if (strcmp(line, "done\n") == 0)
 			continue;
 		fprintf(stderr, "mrt4exabgp got: %.*s", (int)n, line);
 	}
