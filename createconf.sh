@@ -2,15 +2,9 @@
 
 create_exa_config() {
 	local _localip=$1 _localas=$2 _localid=$3
-	local _peerip=$4 _peeras=$5 _mrtfile=$6
-	local _file="exa-$_localip.conf"
+	local _peerip=$4 _peeras=$5
 
-	cat > $_file <<EOF
-process injector {
-	run /usr/local/bin/mrt4exabgp -n "$_localip" "$_mrtfile";
-	encoder text;
-}
-
+	cat >> exabgp.conf <<EOF
 neighbor $_peerip {
 	router-id $_localid;
 	peer-as $_peeras;
@@ -23,6 +17,7 @@ neighbor $_peerip {
 		processes [ injector ];
 	}
 }
+
 EOF
 }
 
@@ -66,6 +61,14 @@ set -e
 
 EOF
 
+cat > exabgp.conf <<EOF
+process injector {
+	run /usr/local/bin/mrt4exabgp ${RSIP:+-N $RSIP} ${RSIP6:+-N $RSIP6} "$mrtfile";
+	encoder text;
+}
+
+EOF
+
 while read ip as bgpid; do
 	if [ "$ip" = "${ip##*:}" ]; then
 		rsip="$RSIP"
@@ -80,6 +83,6 @@ while read ip as bgpid; do
 		echo "ignoring $ip, no matching route server IP" >&2
 		continue
 	fi
-	create_exa_config "$ip" "$as" "$bgpid" "$rsip" "$RSAS" "$mrtfile"
+	create_exa_config "$ip" "$as" "$bgpid" "$rsip" "$RSAS"
 	create_setup "$ip" "$IFACE"
 done

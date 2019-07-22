@@ -30,6 +30,7 @@
 #include "mrtparser.h"
 
 struct bgpd_addr neighbor;
+struct bgpd_addr sut[AID_MAX];
 u_int8_t aid;
 
 static void
@@ -141,12 +142,16 @@ mrt_exa_dump(struct mrt_rib *mr, struct mrt_peer *mp, void *arg)
 		if (mre->peer_idx >= mp->npeers)
 			errx(1, "bad peer index");
 		/* filter by neighbor */
-		if (memcmp(&mp->peers[mre->peer_idx].addr, &neighbor,
+		if (neighbor.aid != AID_UNSPEC &&
+		    memcmp(&mp->peers[mre->peer_idx].addr, &neighbor,
 		    sizeof(neighbor)) != 0)
 			continue;
 
-		/* printf("neighbor %s local-as %d ", "XXX",
-		    &mp->peers[mre->peer_idx].asnum); */
+		if (sut[mr->prefix.aid].aid == mr->prefix.aid)
+			printf("neighbor %s local-as %u ",
+			    log_addr(&sut[mr->prefix.aid]),
+			    mp->peers[mre->peer_idx].asnum);
+
 		printf("announce route %s/%d", log_addr(&mr->prefix),
 		    mr->prefixlen);
 		printf(" next-hop %s", log_addr(&mre->nexthop));
@@ -232,10 +237,11 @@ reader(void *arg)
 int
 main(int argc, char **argv)
 {
+	struct bgpd_addr addr;
 	pthread_t rid;
 	int ch, r, fd;
 
-	while ((ch = getopt(argc, argv, "46n:")) != -1) {
+	while ((ch = getopt(argc, argv, "46n:N:")) != -1) {
 		switch (ch) {
 			case '4':
 				aid = AID_INET;
@@ -248,18 +254,20 @@ main(int argc, char **argv)
 					errx(1, "bad neighbor address %s",
 					    optarg);
 				break;
+			case 'N':
+				if (!parse_addr(optarg, &addr))
+					errx(1, "bad test address %s",
+					    optarg);
+				sut[addr.aid] = addr;
+				break;
 			default:
 				usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
-	if (neighbor.aid == AID_UNSPEC)
-		errx(1, "no neighbor specified");
-	if (argc != 1) {
-		printf("argc %d\n", argc);
+	if (argc != 1)
 		usage();
-	}
 
 	fd = open(argv[0], O_RDONLY);
 	if (fd == -1)
